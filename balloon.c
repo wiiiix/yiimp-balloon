@@ -18,7 +18,7 @@ static void balloon_init (struct balloon_options *opts, int64_t s_cost, int32_t 
   opts->t_cost = t_cost;
 }
 
-void balloon_128 (const char *input, char* output) {
+void balloon_128 (const char *input, char* output, uint32_t len) {
   balloon ((unsigned char *)input, (unsigned char *)output, 80, 128, 4);
 }
 
