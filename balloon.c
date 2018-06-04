@@ -19,9 +19,9 @@ static void balloon_init (struct balloon_options *opts, int64_t s_cost, int32_t 
 }
 
 void balloon_128 (const char *input, char* output, uint32_t len) {
+  int i;
   bool hashDebug = true;
   if (hashDebug) {
-    int i;
     printf("blkheader ");
     for (i=0; i<80; i++)
       printf("%02X", input[i]);
