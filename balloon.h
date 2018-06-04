@@ -47,7 +47,7 @@ struct balloon_options {
   int32_t t_cost;
 };
 
-void balloon_128 (const char *input, char* output, uint32_t len);
+void balloon_128 (const char* input, char* output, uint32_t len);
 void balloon_hash (unsigned char *input, unsigned char *output, int64_t s_cost, int32_t t_cost);
 void balloon (unsigned char *input, unsigned char *output, int32_t len, int64_t s_cost, int32_t t_cost);
 

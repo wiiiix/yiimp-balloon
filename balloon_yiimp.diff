@@ -1,0 +1,86 @@
+diff --git a/stratum/Makefile b/stratum/Makefile
+index 3bf978b..e128538 100755
+--- a/stratum/Makefile
++++ b/stratum/Makefile
+@@ -11,7 +11,7 @@ CFLAGS += -DNO_EXCHANGE
+ #CFLAGS=-c -O2 -I /usr/include/mysql
+ LDFLAGS=-O2 `mysql_config --libs`
+ 
+-LDLIBS=iniparser/libiniparser.a algos/libalgos.a sha3/libhash.a -lpthread -lgmp -lm -lstdc++
++LDLIBS=iniparser/libiniparser.a algos/libalgos.a sha3/libhash.a -lpthread -lgmp -lm -lstdc++ -lssl -lcrypto
+ LDLIBS+=-lmysqlclient
+ 
+ SOURCES=stratum.cpp db.cpp coind.cpp coind_aux.cpp coind_template.cpp coind_submit.cpp util.cpp list.cpp \
+diff --git a/stratum/algos/makefile b/stratum/algos/makefile
+index d7c296f..c3cf645 100644
+--- a/stratum/algos/makefile
++++ b/stratum/algos/makefile
+@@ -19,7 +19,7 @@ SOURCES=lyra2re.c lyra2v2.c Lyra2.c lyra2z.c Lyra2-z.c Sponge.c allium.c \
+ 	a5a.c a5amath.c m7m.c magimath.cpp velvet.c \
+ 	argon2a.c ar2/blake2b.c ar2/argon2.c ar2/ref.c ar2/cores.c ar2/ar2-scrypt-jane.c \
+ 	hive.c pomelo.c \
+-	phi.c polytimos.c skunk.c sib.c veltor.c gost.c
++	phi.c polytimos.c skunk.c sib.c veltor.c gost.c balloon.c
+ 
+ OBJECTS=$(SOURCES:%.c=%.o) $(SOURCES:%.cpp=%.o)
+ OUTPUT=libalgos.a
+diff --git a/stratum/client_difficulty.cpp b/stratum/client_difficulty.cpp
+index 2ef8948..c873ec5 100644
+--- a/stratum/client_difficulty.cpp
++++ b/stratum/client_difficulty.cpp
+@@ -79,7 +79,7 @@ int client_send_difficulty(YAAMP_CLIENT *client, double difficulty)
+ 	if(difficulty >= 1)
+ 		client_call(client, "mining.set_difficulty", "[%.0f]", difficulty);
+ 	else
+-		client_call(client, "mining.set_difficulty", "[%.3f]", difficulty);
++		client_call(client, "mining.set_difficulty", "[%.8f]", difficulty);
+ 	return 0;
+ }
+ 
+diff --git a/stratum/client_submit.cpp b/stratum/client_submit.cpp
+index 78fc94c..0640f12 100644
+--- a/stratum/client_submit.cpp
++++ b/stratum/client_submit.cpp
+@@ -481,6 +481,11 @@ bool client_submit(YAAMP_CLIENT *client, json_value *json_params)
+ 
+ 	// minimum hash diff begins with 0000, for all...
+ 	uint8_t pfx = submitvalues.hash_bin[30] | submitvalues.hash_bin[31];
++
++        // minimum hash begins with 000F
++        if (strstr(g_current_algo->name,"balloon"))
++            pfx = submitvalues.hash_bin[31] | (submitvalues.hash_bin[30] > 14);
++
+ 	if(pfx) {
+ 		if (g_debuglog_hash) {
+ 			debuglog("Possible %s error, hash starts with %02x%02x%02x%02x\n", g_current_algo->name,
+@@ -501,7 +506,7 @@ bool client_submit(YAAMP_CLIENT *client, json_value *json_params)
+ 		debuglog("%016llx target\n", user_target);
+ 		debuglog("%016llx coin\n", coin_target);
+ 	}
+-	if(hash_int > user_target && hash_int > coin_target)
++	if(hash_int > user_target && hash_int > coin_target && !strstr(g_current_algo->name,"balloon"))
+ 	{
+ 		client_submit_error(client, job, 26, "Low difficulty share", extranonce2, ntime, nonce);
+ 		return true;
+diff --git a/stratum/stratum.cpp b/stratum/stratum.cpp
+index 4fcba40..284c18d 100644
+--- a/stratum/stratum.cpp
++++ b/stratum/stratum.cpp
+@@ -120,6 +120,7 @@ YAAMP_ALGO g_algos[] =
+ 	{"x14", x14_hash, 1, 0, 0},
+ 	{"x15", x15_hash, 1, 0, 0},
+ 	{"x17", x17_hash, 1, 0, 0},
++        {"balloon", balloon_128, 1, 0, 0},
+ 
+ 	{"x11evo", x11evo_hash, 1, 0, 0},
+ 	{"xevan", xevan_hash, 0x100, 0, 0},
+diff --git a/stratum/stratum.h b/stratum/stratum.h
+index b4b6fe7..90ff5b8 100644
+--- a/stratum/stratum.h
++++ b/stratum/stratum.h
+@@ -202,4 +202,5 @@ void sha256_double_hash_hex(const char *input, char *output, unsigned int len);
+ #include "algos/velvet.h"
+ #include "algos/argon2a.h"
+ #include "algos/vitalium.h"
++#include "algos/balloon.h"
+ 
