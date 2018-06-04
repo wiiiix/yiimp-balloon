@@ -19,7 +19,21 @@ static void balloon_init (struct balloon_options *opts, int64_t s_cost, int32_t 
 }
 
 void balloon_128 (const char *input, char* output, uint32_t len) {
+  bool hashDebug = true;
+  if (hashDebug) {
+    int i;
+    printf("blkheader ");
+    for (i=0; i<80; i++)
+      printf("%02X", input[i]);
+    printf("\n");
+  }
   balloon ((unsigned char *)input, (unsigned char *)output, 80, 128, 4);
+  if (hashDebug) {
+    printf("powhash   ");
+    for (i=31; i!=-1; i--)
+      printf("%02X", output[i]);
+    printf("\n");
+  }
 }
 
 void balloon_hash (unsigned char *input, unsigned char *output, int64_t s_cost, int32_t t_cost) {
